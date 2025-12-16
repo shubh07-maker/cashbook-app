@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'book_service.dart';
-import 'home_screen.dart'; 
+import 'home_screen.dart';
+import 'auth_service.dart';
+import 'login_screen.dart';
+import 'main.dart';
+import 'profile_screen.dart';
 
 class BookListScreen extends StatefulWidget {
   const BookListScreen({super.key});
@@ -14,7 +18,6 @@ class _BookListScreenState extends State<BookListScreen> {
   final BookService _bookService = BookService();
   final TextEditingController _nameController = TextEditingController();
 
-  // Helper to calculate totals from a list of documents
   Map<String, double> _calculateTotals(List<QueryDocumentSnapshot> docs) {
     double totalIn = 0;
     double totalOut = 0;
@@ -28,8 +31,6 @@ class _BookListScreenState extends State<BookListScreen> {
       }
     }
     return {
-      'in': totalIn,
-      'out': totalOut,
       'balance': totalIn - totalOut,
     };
   }
@@ -42,7 +43,7 @@ class _BookListScreenState extends State<BookListScreen> {
         title: const Text("Create New Book"),
         content: TextField(
           controller: _nameController,
-          decoration: const InputDecoration(labelText: "Book Name (e.g. Jan 2025)"),
+          decoration: const InputDecoration(labelText: "Book Name"),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
@@ -62,9 +63,30 @@ class _BookListScreenState extends State<BookListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      appBar: AppBar(title: const Text("My Bookshelf")),
-      backgroundColor: Colors.grey[100], // Light grey background for better contrast
+      appBar: AppBar(
+        title: const Text("My Bookshelf"),
+        actions: [
+          IconButton(
+            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
+            onPressed: () {
+              themeNotifier.value = isDark ? ThemeMode.light : ThemeMode.dark;
+            },
+          ),
+          IconButton(
+          icon: const Icon(Icons.account_circle, size: 28), // Profile Icon
+          onPressed: () {
+         Navigator.push(
+         context,
+         MaterialPageRoute(builder: (context) => const ProfileScreen()),
+    );
+  },
+),
+        ],
+      ),
+      backgroundColor: isDark ? null : Colors.grey[100], 
       body: StreamBuilder<QuerySnapshot>(
         stream: _bookService.getBooks(),
         builder: (context, snapshot) {
@@ -72,17 +94,7 @@ class _BookListScreenState extends State<BookListScreen> {
           final books = snapshot.data!.docs;
 
           if (books.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.library_books, size: 60, color: Colors.grey),
-                  SizedBox(height: 10),
-                  Text("No books yet.", style: TextStyle(color: Colors.grey)),
-                  Text("Tap + to create one.", style: TextStyle(color: Colors.grey)),
-                ],
-              ),
-            );
+            return const Center(child: Text("No books yet. Tap + to create."));
           }
 
           return ListView.builder(
@@ -93,7 +105,6 @@ class _BookListScreenState extends State<BookListScreen> {
               final bookId = bookDoc.id;
               final bookName = bookDoc['name'];
 
-              // Nested StreamBuilder: Peeks inside EACH book to calculate totals
               return StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
                     .collection('books')
@@ -101,23 +112,17 @@ class _BookListScreenState extends State<BookListScreen> {
                     .collection('transactions')
                     .snapshots(),
                 builder: (context, txSnapshot) {
-                  // Default values if loading
-                  double totalIn = 0;
-                  double totalOut = 0;
                   double balance = 0;
-
                   if (txSnapshot.hasData) {
                     final totals = _calculateTotals(txSnapshot.data!.docs);
-                    totalIn = totals['in']!;
-                    totalOut = totals['out']!;
                     balance = totals['balance']!;
                   }
 
                   return Card(
                     elevation: 3,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     margin: const EdgeInsets.only(bottom: 16),
-                    child: InkWell(
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.all(16),
                       onTap: () {
                         Navigator.push(
                           context,
@@ -127,90 +132,13 @@ class _BookListScreenState extends State<BookListScreen> {
                         );
                       },
                       onLongPress: () => _bookService.deleteBook(bookId),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Header: Book Name and Icon
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  bookName,
-                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                                ),
-                                Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-                              ],
-                            ),
-                            const Divider(height: 20),
-
-                            // Section 1: Net Balance (Big Center Text)
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text("Net Balance", style: TextStyle(color: Colors.grey, fontSize: 14)),
-                                Text(
-                                  "₹ ${balance.toStringAsFixed(0)}",
-                                  style: const TextStyle(
-                                    fontSize: 22, 
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-
-                            // Section 2: Income and Expense Row
-                            Row(
-                              children: [
-                                // Income
-                                Expanded(
-                                  child: Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.green.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const Text("Total In (+)", style: TextStyle(color: Colors.green, fontSize: 12)),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          "₹ ${totalIn.toStringAsFixed(0)}",
-                                          style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 16),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                // Expense
-                                Expanded(
-                                  child: Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const Text("Total Out (-)", style: TextStyle(color: Colors.red, fontSize: 12)),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          "₹ ${totalOut.toStringAsFixed(0)}",
-                                          style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                      title: Text(bookName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      trailing: Text(
+                        "₹ ${balance.toStringAsFixed(0)}",
+                        style: TextStyle(
+                          fontSize: 20, 
+                          fontWeight: FontWeight.bold,
+                          color: balance >= 0 ? Colors.green : Colors.red, 
                         ),
                       ),
                     ),
@@ -221,12 +149,9 @@ class _BookListScreenState extends State<BookListScreen> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: _showAddBookDialog,
-        backgroundColor: Colors.blue[800],
-        foregroundColor: Colors.white,
-        label: const Text("New Book"),
-        icon: const Icon(Icons.add),
+        child: const Icon(Icons.add),
       ),
     );
   }
