@@ -1,16 +1,19 @@
-# My_Cashbook
+# CashBook App 📱
 
-A new Flutter project.
+[![Download APK](https://img.shields.io/badge/Download%20APK-v1.0-success?style=for-the-badge&logo=android&logoColor=white)](https://github.com/shubh07-maker/cashbook-app/releases/tag/v1.0.0)
 
-## Getting Started
+A real-time personal accounting app built with Flutter & Firebase.
 
-This project is a starting point for a Flutter application.
+## 🚀 Features
+- **Secure Login:** Private accounts using Firebase Auth.
+- **Real-time Sync:** Data saves instantly to the cloud.
+- **PDF Reports:** Export your transactions to share.
+- **Dark Mode:** Easy on the eyes at night.
 
-A few resources to get you started if this is your first Flutter project:
+## 📸 Screenshots
+*(You can drag and drop your screenshots here later)*
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 🛠 Tech Stack
+- Flutter (Dart)
+- Firebase (Auth, Firestore)
+- PDF Generation
